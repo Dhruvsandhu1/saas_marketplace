@@ -5,6 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 # Set page title and icon
 import streamlit as st
+
+nacho_key=st.secrets['NACHO_KEY']
 st.set_page_config(page_title="SaaS Marketplace", page_icon=":chart_with_upwards_trend:", layout="wide")
 
 # Sidebar
@@ -182,8 +184,7 @@ if page == "Home":
                 st.write(f"Failed to fetch data. Status code: {response.status_code}")
 
         # Example usage
-        api_key = "NN_cm1xrqiq100000ami1pcq20j3_Qn52ZWLOj7UcSVj48R75JlASr"
-        search_software_nachonacho(api_key, software_name, page=1)
+        search_software_nachonacho(nacho_key, software_name, page=1)
 
     
 # About Page
