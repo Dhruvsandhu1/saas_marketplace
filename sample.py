@@ -1,9 +1,11 @@
 import streamlit as st
+import re
 from PIL import Image
 import requests
 from bs4 import BeautifulSoup
 # Set page title and icon
-st.set_page_config(page_title="Saas Marketplace", page_icon=":chart_with_upwards_trend:", layout="wide")
+import streamlit as st
+st.set_page_config(page_title="SaaS Marketplace", page_icon=":chart_with_upwards_trend:", layout="wide")
 
 # Sidebar
 st.sidebar.title("Navigation")
@@ -11,32 +13,82 @@ st.sidebar.markdown("Choose your page:")
 page = st.sidebar.selectbox("", ["Home", "About", "Contact"])
 
 # Main header
-st.title("Saas Marketplace")
-st.subheader("We provide information about the latest software that are in the industry and helps you meet your software requirements")
+# st.title("SaaS Marketplace")
+# st.subheader("We provide information about the latest software that are in the industry and helps you meet your software requirements")
 
-def remove_html_tags(html):
-        """
-        Remove all HTML tags from the given content.
-        """
-        soup = BeautifulSoup(html, "html.parser")
-        return soup.get_text(separator="\n").strip()
+def remove_html_tags(text):
+    """
+    Converts basic HTML tags to Markdown-style formatting in Streamlit.
+    Handles <p>, <ul>, <li>, <strong>, and other basic HTML tags.
+    """
+    # Handle <li> by replacing with bullet points
+    text = re.sub(r'<li>(.*?)</li>', r'\n• \1', text)
 
-# Background image or theme (Optional)
-def background_image():
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background-image: url('https://stock.adobe.com/search?k=sunset');
-            background-size: cover;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    # Handle <ul> by adding spacing before and after unordered list
+    text = re.sub(r'<ul>', r'\n', text)
+    text = re.sub(r'</ul>', r'\n', text)
 
-# Call function for background image
-background_image()
+    # Handle empty <p></p> by just adding two newlines
+    text = re.sub(r'<p></p>', r'__________________________', text)
+
+    # Handle <p> by adding two newlines (to simulate paragraph spacing)
+    text = re.sub(r'<p>(.*?)</p>', r'\n\n\1\n\n', text)
+
+    # Handle <strong> for bold text (Streamlit uses Markdown: **bold**)
+    text = re.sub(r'<strong>(.*?)</strong>', r'**\1**', text)
+
+    # Handle HTML entities
+    text = re.sub(r'&amp;', '&', text)  # Convert &amp; to &
+
+    # Remove any other remaining HTML tags (optional, as needed)
+    text = re.sub(r'<.*?>', '', text)
+
+    # Clean up any excess newlines
+    text = re.sub(r'\n+', '\n\n', text)  # Collapse multiple newlines into two
+
+    # Return the formatted text
+    return text.strip()
+
+
+
+# def remove_html_tags(text):
+#     """
+#     Remove or format specific HTML tags from the given content.
+#     Handles <p>, <ul>, <li>, <strong>, and other basic HTML tags.
+#     """
+#     soup = BeautifulSoup(text, "html.parser")
+
+#     # Handle <li> elements by adding bullet points
+#     for li in soup.find_all("li"):
+#         li.insert_before("<br>• ")
+#         li.insert_after("<br>")
+
+#     # Handle <ul> by adding newlines before and after the unordered list
+#     for ul in soup.find_all("ul"):
+#         ul.insert_before("<br>")  # Optional: You can choose to add before if needed
+#         ul.insert_after("<br>")
+
+#     # Handle <p> by collecting text and adding <br> tags
+#     new_paragraphs = []
+#     for p in soup.find_all("p"):
+#         paragraph_text = p.get_text().strip()  # Strip whitespace
+#         if paragraph_text:  # Only add non-empty paragraphs
+#             new_paragraphs.append(f"<br><br>{paragraph_text}<br><br>")  # Collect text with <br>
+
+#     # Replace <p> elements with the collected text
+#     for p in soup.find_all("p"):
+#         if p.get_text().strip():  # Replace only non-empty <p> tags
+#             p.replace_with(BeautifulSoup(new_paragraphs.pop(0), "html.parser"))
+
+#     # Handle <strong> tags for bold text using markdown (i.e., **bold**)
+#     for strong in soup.find_all("strong"):
+#         strong.replace_with(f"*****{strong.get_text()}*****")
+
+#     # Remove other HTML tags and return plain text
+#     return soup.get_text(separator="").strip()  # Remove separator to avoid new lines
+
+
+
 
 # Home Page
 if page == "Home":
@@ -44,21 +96,26 @@ if page == "Home":
     # st.write("This is where the main content for your homepage would go. You can add charts, text, images, and more.")
     
     # Example: Image
-    image = Image.open("saas marketplace.jpg")
-    st.image(image,width=400)
+    # image = Image.open("saas marketplace.jpg")
+    # st.image(image,width=400)
+    st.markdown(
+    """
+    <style>
+    .jazzee-title {
+                    display: inline;
+                    background: linear-gradient(93.59deg, orange 3.13%, #f6be58 85.77%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    font-size: 1em;
+                    font-weight: bold;
+    }
+    </style>
+    """, 
+    unsafe_allow_html=True
+)
 
-    # # Example: Columns for layout
-    # col1, col2, col3 = st.columns(3)
-    # with col1:
-    #     st.write("Column 1 content")
-    # with col2:
-    #     st.write("Column 2 content")
-    # with col3:
-    #     st.write("Column 3 content")
-    
-    # # Example: Expander for additional information
-    # with st.expander("See More"):
-    #     st.write("Here's more detailed information on the homepage.")
+    # Example of using the custom class in an HTML element
+    st.markdown('<h1><span class="jazzee-title">Jazzee</span> Assist</h1>', unsafe_allow_html=True)
     software_name = st.text_input("Software Name", placeholder="Enter software name here...")
     if software_name:
         def search_software_nachonacho(api_key, software_name, page=1):
@@ -83,30 +140,40 @@ if page == "Home":
             if response.status_code == 200:
                 # Parse the JSON response
                 results = response.json()
-
+                # st.write(results)
                 # Check if there are results in the response
                 if "products" in results and results["products"]:
                     for software in results["products"]:
                         name = software.get("name", "N/A")
                         description = software.get("shortDescription", "No description available")
+                        if description=="":
+                            description="No description available."
                         long_description= software.get("productDescription", "No description available")
+                        if long_description=="":
+                            long_description="No description available."
                         benefits = software.get("keyBenefits", "N/A")
+                        if benefits=="":
+                            benefits="No information about benefits is available."
                         pricing = software.get("pricing", "No pricing information available")
                         if pricing=="":
-                            pricing='No pricing information is available to us'
+                            pricing='No pricing information available.'
                         features = software.get("features", "No description available")
-                        lines_ben = [sentence.strip() for sentence in remove_html_tags(benefits).replace(':', '.').split('.') if sentence]
-                        lines_fet = [sentence.strip() for sentence in remove_html_tags(features).replace(':', '.').split('.') if sentence]
-                        st.markdown(f"***<span style='font-size: 24px;'>Software Name : </span>*** {remove_html_tags(name)}", unsafe_allow_html=True)
-                        st.markdown(f"***<span style='font-size: 24px;'>Short Description : </span>*** {remove_html_tags(description)}", unsafe_allow_html=True)
-                        st.markdown(f"***<span style='font-size: 24px;'>Pricing : </span>*** {remove_html_tags(pricing)}", unsafe_allow_html=True)
+                        if features=="":
+                            features="No information about features is available."
+                        st.markdown(f"***<span style='font-size: 30px;'>{remove_html_tags(name)}</span>*** ", unsafe_allow_html=True)
+                        # st.write("\n")
+                        st.markdown(f"***<span style='font-size: 18px;'>{remove_html_tags((description))}</span>*** ", unsafe_allow_html=True)
+                        # st.markdown(f"***<span style='font-size: 24px;'>Pricing : </span>*** {remove_html_tags(pricing)}", unsafe_allow_html=True)
+                        st.write("\n")
                         st.markdown(f"***<span style='font-size: 24px;'>Benefits : </span>***", unsafe_allow_html=True)
-                        for line in lines_ben:
-                            st.write(f"-  {line}")
-                        st.markdown(f"***<span style='font-size: 24px;'>Long Description : </span>*** {remove_html_tags(long_description)}", unsafe_allow_html=True)
+                        st.markdown(remove_html_tags(benefits))
+                        st.write("\n")
+                        st.markdown(f"***<span style='font-size: 24px;'>Description : </span>*** {remove_html_tags(long_description)}", unsafe_allow_html=True)
+                        st.write("\n")
                         st.markdown(f"***<span style='font-size: 24px;'>Features : </span>*** ", unsafe_allow_html=True)
-                        for line in lines_fet:
-                            st.write(f"-  {line}")
+                        st.markdown(remove_html_tags(features))
+                        # st.markdown(features)
+                        # st.markdown(remove_html_tags(features))
                         st.markdown("-" * 40)
 
                 else:
