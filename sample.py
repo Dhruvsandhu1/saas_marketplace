@@ -3,10 +3,11 @@ import re
 from PIL import Image
 import requests
 from bs4 import BeautifulSoup
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 # Set page title and icon
 import streamlit as st
-
-nacho_key=st.secrets['NACHO_KEY']
 st.set_page_config(page_title="SaaS Marketplace", page_icon=":chart_with_upwards_trend:", layout="wide")
 
 # Sidebar
@@ -18,89 +19,39 @@ page = st.sidebar.selectbox("", ["Home", "About", "Contact"])
 # st.title("SaaS Marketplace")
 # st.subheader("We provide information about the latest software that are in the industry and helps you meet your software requirements")
 
-def remove_html_tags(text):
-    """
-    Converts basic HTML tags to Markdown-style formatting in Streamlit.
-    Handles <p>, <ul>, <li>, <strong>, and other basic HTML tags.
-    """
-    # Handle <li> by replacing with bullet points
-    text = re.sub(r'<li>(.*?)</li>', r'\n• \1', text)
+def remove_html_tags(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    flag=0
+    for element in soup:
+        if element.name == 'p':
+            st.markdown(element.text.strip())
+            flag=1
+        elif element.name == 'h3':
+            st.markdown(f"**<span style='font-size: 20px;'>{element.text.strip()}</span>**",unsafe_allow_html=True)
+            flag=1
+        elif element.name == 'ul':
+            for li in element.find_all('li'):
+                strong_tag = li.find('strong')
+                if strong_tag:
+                    # Get the strong text and remaining text, strip spaces
+                    strong_text = strong_tag.text.strip()
+                    remaining_text = li.get_text(separator=' ', strip=True).replace(strong_tag.text, '', 1).strip()
+                    st.markdown(f"- **{strong_text}** {remaining_text}")
+                    flag=1
+                else:
+                    st.markdown(f"- {li.get_text(separator=' ', strip=True)}")
+                    flag=1
+        elif element.name == 'h1':
+            st.markdown(f"**<span style='font-size: 30px;'>{element.text.strip()}</span>**",unsafe_allow_html=True)
+            flag=1
+        elif element.name == 'h2':
+            st.markdown(f"**<span style='font-size: 25px;'>{element.text.strip()}</span>**",unsafe_allow_html=True)
+            flag=1
+    if flag==0:
+        st.markdown(html_content)
 
-    # Handle <ul> by adding spacing before and after unordered list
-    text = re.sub(r'<ul>', r'\n', text)
-    text = re.sub(r'</ul>', r'\n', text)
-
-    # Handle empty <p></p> by just adding two newlines
-    text = re.sub(r'<p></p>', r'__________________________', text)
-
-    # Handle <p> by adding two newlines (to simulate paragraph spacing)
-    text = re.sub(r'<p>(.*?)</p>', r'\n\n\1\n\n', text)
-
-    # Handle <strong> for bold text (Streamlit uses Markdown: **bold**)
-    text = re.sub(r'<strong>(.*?)</strong>', r'**\1**', text)
-
-    # Handle HTML entities
-    text = re.sub(r'&amp;', '&', text)  # Convert &amp; to &
-
-    # Remove any other remaining HTML tags (optional, as needed)
-    text = re.sub(r'<.*?>', '', text)
-
-    # Clean up any excess newlines
-    text = re.sub(r'\n+', '\n\n', text)  # Collapse multiple newlines into two
-
-    # Return the formatted text
-    return text.strip()
-
-
-
-# def remove_html_tags(text):
-#     """
-#     Remove or format specific HTML tags from the given content.
-#     Handles <p>, <ul>, <li>, <strong>, and other basic HTML tags.
-#     """
-#     soup = BeautifulSoup(text, "html.parser")
-
-#     # Handle <li> elements by adding bullet points
-#     for li in soup.find_all("li"):
-#         li.insert_before("<br>• ")
-#         li.insert_after("<br>")
-
-#     # Handle <ul> by adding newlines before and after the unordered list
-#     for ul in soup.find_all("ul"):
-#         ul.insert_before("<br>")  # Optional: You can choose to add before if needed
-#         ul.insert_after("<br>")
-
-#     # Handle <p> by collecting text and adding <br> tags
-#     new_paragraphs = []
-#     for p in soup.find_all("p"):
-#         paragraph_text = p.get_text().strip()  # Strip whitespace
-#         if paragraph_text:  # Only add non-empty paragraphs
-#             new_paragraphs.append(f"<br><br>{paragraph_text}<br><br>")  # Collect text with <br>
-
-#     # Replace <p> elements with the collected text
-#     for p in soup.find_all("p"):
-#         if p.get_text().strip():  # Replace only non-empty <p> tags
-#             p.replace_with(BeautifulSoup(new_paragraphs.pop(0), "html.parser"))
-
-#     # Handle <strong> tags for bold text using markdown (i.e., **bold**)
-#     for strong in soup.find_all("strong"):
-#         strong.replace_with(f"*****{strong.get_text()}*****")
-
-#     # Remove other HTML tags and return plain text
-#     return soup.get_text(separator="").strip()  # Remove separator to avoid new lines
-
-
-
-
-# Home Page
-if page == "Home":
-    # st.write("## Home Page Content")
-    # st.write("This is where the main content for your homepage would go. You can add charts, text, images, and more.")
-    
-    # Example: Image
-    # image = Image.open("saas marketplace.jpg")
-    # st.image(image,width=400)
-    st.markdown(
+#jazzee logo style
+st.markdown(
     """
     <style>
     .jazzee-title {
@@ -115,7 +66,15 @@ if page == "Home":
     """, 
     unsafe_allow_html=True
 )
-
+# Home Page
+if page == "Home":
+    # st.write("## Home Page Content")
+    # st.write("This is where the main content for your homepage would go. You can add charts, text, images, and more.")
+    
+    # Example: Image
+    # image = Image.open("saas marketplace.jpg")
+    # st.image(image,width=400)
+    
     # Example of using the custom class in an HTML element
     st.markdown('<h1><span class="jazzee-title">Jazzee</span> Assist</h1>', unsafe_allow_html=True)
     software_name = st.text_input("Software Name", placeholder="Enter software name here...")
@@ -162,18 +121,19 @@ if page == "Home":
                         features = software.get("features", "No description available")
                         if features=="":
                             features="No information about features is available."
-                        st.markdown(f"***<span style='font-size: 30px;'>{remove_html_tags(name)}</span>*** ", unsafe_allow_html=True)
+                        st.markdown(f"**<span style='font-size: 40px;'>{name}</span>** ", unsafe_allow_html=True)
                         # st.write("\n")
-                        st.markdown(f"***<span style='font-size: 18px;'>{remove_html_tags((description))}</span>*** ", unsafe_allow_html=True)
-                        # st.markdown(f"***<span style='font-size: 24px;'>Pricing : </span>*** {remove_html_tags(pricing)}", unsafe_allow_html=True)
+                        remove_html_tags((description))
+                        # st.markdown(f"***<span style='font-size: 24px;'>Pricing</span>*** {remove_html_tags(pricing)}", unsafe_allow_html=True)
                         st.write("\n")
-                        st.markdown(f"***<span style='font-size: 24px;'>Benefits : </span>***", unsafe_allow_html=True)
-                        st.markdown(remove_html_tags(benefits))
+                        st.markdown(f"**<span style='font-size: 36px;'>Benefits</span>**", unsafe_allow_html=True)
+                        remove_html_tags(benefits)
                         st.write("\n")
-                        st.markdown(f"***<span style='font-size: 24px;'>Description : </span>*** {remove_html_tags(long_description)}", unsafe_allow_html=True)
+                        st.markdown(f"**<span style='font-size: 36px;'>Description</span>** ", unsafe_allow_html=True)
+                        remove_html_tags(long_description)
                         st.write("\n")
-                        st.markdown(f"***<span style='font-size: 24px;'>Features : </span>*** ", unsafe_allow_html=True)
-                        st.markdown(remove_html_tags(features))
+                        st.markdown(f"**<span style='font-size: 36px;'>Features</span>** ", unsafe_allow_html=True)
+                        remove_html_tags(features)
                         # st.markdown(features)
                         # st.markdown(remove_html_tags(features))
                         st.markdown("-" * 40)
@@ -184,36 +144,92 @@ if page == "Home":
                 st.write(f"Failed to fetch data. Status code: {response.status_code}")
 
         # Example usage
-        search_software_nachonacho(nacho_key, software_name, page=1)
+        api_key = "NN_cm1xrqiq100000ami1pcq20j3_Qn52ZWLOj7UcSVj48R75JlASr"
+        search_software_nachonacho(api_key, software_name, page=1)
 
     
 # About Page
 elif page == "About":
-    st.write("""
-            About Us
-             
+    st.markdown('<h1>About <span class="jazzee-title">Jazzee</span> Assist</h1>', unsafe_allow_html=True)
 
-Welcome to Jazzee, where we believe that choosing the right product should be simple, personalized, and empowering.
+    st.write(
+    "Welcome to **Jazzee Assist**, your ultimate guide in making informed software choices! Created by **Jazzee**, "
+    "Jazzee Assist is designed to simplify your decision-making process by providing detailed and accurate information "
+    "about various software solutions available in the marketplace."
+)
 
-At Jazzee, our mission is to help customers make informed decisions, cutting through the noise of the marketplace to find the perfect software solutions that truly meet their needs. Whether you're a small business owner looking for efficiency tools, a developer seeking cutting-edge solutions, or an enterprise evaluating the best SaaS options, we’re here to guide you every step of the way.
+    # Key Features
+    st.subheader("Key Features of Jazzee Assist:")
+    features = [
+        "Comprehensive software information at your fingertips",
+        "Easy comparisons between different tools",
+        "User ratings and reviews to guide your decision",
+        "Up-to-date pricing and feature details"
+    ]
 
-Our Vision
-We’re not just a platform—we’re a disruptor in the SaaS marketplace. In an industry flooded with overwhelming choices, our goal is to revolutionize how software is discovered and purchased. By combining smart technology with a deep understanding of the marketplace, we’re reshaping the customer experience to be intuitive, transparent, and tailored to individual needs.
+    # Displaying the features in a bullet list
+    for feature in features:
+        st.write(f"- {feature}")
 
-Our vision is simple:
-
+    # Conclusion
+    st.write(
+        "No more endless searching—let Jazzee Assist do the heavy lifting for you. Make your software decisions with "
+        "confidence and ease!"
+    )
+    st.title("Our Vision")
+    st.markdown('''
 Empower customers to make the right choice, every time.
 Disrupt traditional marketplaces by offering an experience built on trust, transparency, and efficiency.
 Foster growth by ensuring customers have access to the best tools that drive their success.
 At Jazzee, we strive to make software selection seamless and stress-free, while pushing the boundaries of what a marketplace can do. We believe in forging strong partnerships with SaaS providers and our customers, ensuring that together, we shape the future of business technology.
 
 Join us on this journey to transform the way you choose, use, and experience software.
-             """)
+''')
     
 # Contact Page
 elif page == "Contact":
-    st.write("## Contact Us")
-    st.write("Feel free to reach out to us via the form below.")
-    st.text_input("Name")
-    st.text_area("Message")
-    st.button("Submit")
+    def send_email(name, email, message):
+        # Set up the server and email credentials
+        smtp_server = "smtp.gmail.com"  # Change this if you are using a different email provider
+        smtp_port = 587
+        sender_email = "your_email@gmail.com"  # Replace with your email
+        sender_password = "your_password"  # Replace with your email password
+
+        # Create the email content
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = sender_email
+        msg['Subject'] = f"Contact Form Submission from {name}"
+
+        body = f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
+        msg.attach(MIMEText(body, 'plain'))
+
+        try:
+            # Connect to the server and send the email
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()  # Use TLS for security
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            server.quit()
+            return True
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+
+    # Streamlit page
+    st.title("Contact Us")
+
+    # Form for user input
+    with st.form("contact_form"):
+        name = st.text_input("Your Name")
+        email = st.text_input("Your Email")
+        message = st.text_area("Your Message")
+        
+        # Submit button
+        submitted = st.form_submit_button("Send Message")
+        
+        if submitted:
+            if send_email(name, email, message):
+                st.success("Your message has been sent successfully!")
+            else:
+                st.error("There was an error sending your message. Please try again.")
