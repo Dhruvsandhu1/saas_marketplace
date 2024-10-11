@@ -14,7 +14,7 @@ st.set_page_config(page_title="SaaS Marketplace", page_icon=":chart_with_upwards
 # Sidebar
 st.sidebar.title("Navigation")
 st.sidebar.markdown("Choose your page:")
-page = st.sidebar.selectbox("", ["Home", "About Us", "Contact","Customer Profile"])
+page = st.sidebar.selectbox("", ["Home", "About Us", "Contact","Software Reviews"])
 
 # Main header
 # st.title("SaaS Marketplace")
@@ -237,7 +237,7 @@ elif page == "Contact":
             else:
                 st.error("There was an error sending your message. Please try again.")
 
-elif page=="Customer Profile":
+elif page=="Software Reviews":
     # Define the API endpoint and authorization token
     API_URL = "https://app.reviewflowz.com/api/v2/accounts/1850/listings"
     LISTINGS_API_URL = "https://app.reviewflowz.com/api/v2/accounts/1850/listings?count=10000"
@@ -320,48 +320,65 @@ elif page=="Customer Profile":
             return response.json()  # Return the review data in JSON format
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
+    
+    def extract_text_after_question(paragraph):
+        # Split the paragraph at the first occurrence of the question mark '?'
+        parts = paragraph.split('?', 1)  # The '1' ensures splitting only at the first question mark
+        
+        # Check if there was a question mark and return the part after it
+        if len(parts) > 1:
+            return parts[1].strip()  # Strip to remove leading or trailing spaces
+        else:
+            return paragraph
 
     # Submit button    
     if st.button("Fetch Reviews"):
         done=0
+        listing=get_listings(AUTH_TOKEN)
+        account_id=0
+        have_id=0
+        #to display all the listing 
+        # st.write(listing)
+
+        have_id,account_id=get_account_id(listing,have_id)
+        if software_name and platform and site_url and have_id!=1:
+            # st.write("I am running")
+            profile_id, status_code = create_listing(software_name, platform, site_url)
+            if status_code == 200 and profile_id:
+                st.success(f"Listing created successfully for {software_name} on {platform}.")
+                dashboard_url = f"https://app.reviewflowz.com/review_profiles/{profile_id}"
+                st.write(f"Visit the dashboard: {dashboard_url}")
+                new_listing=get_listings(AUTH_TOKEN)
+                have_id,account_id=get_account_id(new_listing,have_id)
+
+                st.write(f"Your id is {account_id}")
+            # elif have_id!=1:
+            #     st.error(f"Failed to create listing due to incorrect configurations . Status Code: {status_code}")
+        elif have_id!=0:
+            have_id=have_id
+        else:
+            st.error("Please fill out all fields.")
+        new_listing=get_listings(AUTH_TOKEN)
+        # st.write(new_listing)
+        have_id,account_id=get_account_id(new_listing,have_id)
+        # st.write(account_id)
         while True:
-            listing=get_listings(AUTH_TOKEN)
-            account_id=0
-            have_id=0
-            #to display all the listing 
-            # st.write(listing)
-
-            have_id,account_id=get_account_id(listing,have_id)
-            if software_name and platform and site_url and have_id!=1:
-                # st.write("I am running")
-                profile_id, status_code = create_listing(software_name, platform, site_url)
-                if status_code == 200 and profile_id:
-                    st.success(f"Listing created successfully for {software_name} on {platform}.")
-                    dashboard_url = f"https://app.reviewflowz.com/review_profiles/{profile_id}"
-                    st.write(f"Visit the dashboard: {dashboard_url}")
-                    new_listing=get_listings(AUTH_TOKEN)
-                    have_id,account_id=get_account_id(new_listing,have_id)
-
-                    st.write(f"Your id is {account_id}")
-                # elif have_id!=1:
-                #     st.error(f"Failed to create listing due to incorrect configurations . Status Code: {status_code}")
-            elif have_id!=0:
-                have_id=have_id
-            else:
-                st.error("Please fill out all fields.")
-            new_listing=get_listings(AUTH_TOKEN)
-            # st.write(new_listing)
-            have_id,account_id=get_account_id(new_listing,have_id)
-            # st.write(account_id)
             review_data = fetch_review(platform, account_id)
             if "error" in review_data:
                 st.error(f"Failed to fetch the review: {review_data['error']}")
             elif review_data['data']!=[]:
                 review=review_data
+                sum1=0
+                for i in range(len(review['data'])):
+                    sum1+=review['data'][i]['rating']
+                overall_rating=sum1/len(review['data'])
                 # st.write(review_data)
+                st.markdown(f"**<span style='font-size: 28px;'>Overall Rating : {overall_rating}</span>**",unsafe_allow_html=True)
+                st.markdown("__________________________")
                 for i in range(len(review['data'])):
                     st.markdown(f"**<span style='font-size: 24px;'>{review['data'][i]['title']}</span>**",unsafe_allow_html=True)
-                    st.markdown(f"**<span style='font-size: 18px;'>Overall :</span>** {review['data'][i]['overall']}",unsafe_allow_html=True)
+                    st.markdown(f"**<span style='font-size: 20px;'>Rating : {review['data'][i]['rating']}</span>**",unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-size: 18px;'>{extract_text_after_question(review['data'][i]['overall'])}</span>",unsafe_allow_html=True)
                     st.markdown(f"**<span style='font-size: 18px;'>Pros :</span>** {review['data'][i]['pros']}",unsafe_allow_html=True)
                     st.markdown(f"**<span style='font-size: 18px;'>Cons :</span>** {review['data'][i]['cons']}",unsafe_allow_html=True)
                     st.markdown("__________________________")
