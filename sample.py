@@ -239,9 +239,9 @@ elif page == "Contact":
 
 elif page=="Software Reviews":
     # Define the API endpoint and authorization token
-    API_URL = "https://app.reviewflowz.com/api/v2/accounts/1850/listings"
-    LISTINGS_API_URL = "https://app.reviewflowz.com/api/v2/accounts/1850/listings?count=10000"
-    AUTH_TOKEN = "eNSjxYh8fPKzUqAoCELWx5xt"  # Replace with your actual token
+    API_URL = "https://app.reviewflowz.com/api/v2/accounts/1888/listings"
+    LISTINGS_API_URL = "https://app.reviewflowz.com/api/v2/accounts/1888/listings?count=10000"
+    AUTH_TOKEN = "bz7z9gcYoPpjdRe2PKT4DP8t"  # Replace with your actual token
     # Streamlit app setup
     st.markdown('<h1><span class="jazzee-title">Jazzee</span> Software Reviews</h1>', unsafe_allow_html=True)
 
@@ -303,10 +303,10 @@ elif page=="Software Reviews":
         
     # Function to fetch the review
     def fetch_review(platform, token_number):
-        api_url = "https://app.reviewflowz.com/api/v2/accounts/1850/reviews"
+        api_url = "https://app.reviewflowz.com/api/v2/accounts/1888/reviews"
         headers = {
             "accept": "application/json",
-            "Authorization": "Bearer eNSjxYh8fPKzUqAoCELWx5xt"  
+            "Authorization": "Bearer bz7z9gcYoPpjdRe2PKT4DP8t"  
         }
         
         params = {
@@ -330,39 +330,58 @@ elif page=="Software Reviews":
             return parts[1].strip()  # Strip to remove leading or trailing spaces
         else:
             return paragraph
+    
+    def delete_listing(id):
+        url = f'https://app.reviewflowz.com/api/v2/accounts/1888/listings/{id}'
+        headers = {
+            'accept': 'application/json',
+            'Authorization': 'Bearer bz7z9gcYoPpjdRe2PKT4DP8t'
+        }
+
+        response = requests.delete(url, headers=headers)
+
+        if response.status_code == 200:
+            print("Listing deleted successfully.")
+        else:
+            print(f"Failed to delete listing. Status code: {response.status_code}")
 
     # Submit button    
     if st.button("Fetch Reviews"):
-        done=0
         listing=get_listings(AUTH_TOKEN)
-        account_id=0
-        have_id=0
-        #to display all the listing 
-        # st.write(listing)
-
-        have_id,account_id=get_account_id(listing,have_id)
-        if software_name and platform and site_url and have_id!=1:
-            # st.write("I am running")
-            profile_id, status_code = create_listing(software_name, platform, site_url)
-            if status_code == 200 and profile_id:
-                st.success(f"Listing created successfully for {software_name} on {platform}.")
-                dashboard_url = f"https://app.reviewflowz.com/review_profiles/{profile_id}"
-                st.write(f"Visit the dashboard: {dashboard_url}")
-                new_listing=get_listings(AUTH_TOKEN)
-                have_id,account_id=get_account_id(new_listing,have_id)
-
-                st.write(f"Your id is {account_id}")
-            # elif have_id!=1:
-            #     st.error(f"Failed to create listing due to incorrect configurations . Status Code: {status_code}")
-        elif have_id!=0:
-            have_id=have_id
-        else:
-            st.error("Please fill out all fields.")
-        new_listing=get_listings(AUTH_TOKEN)
-        # st.write(new_listing)
-        have_id,account_id=get_account_id(new_listing,have_id)
-        # st.write(account_id)
+        first_id=listing['data'][0]['id']
+        if listing['pagination']['count']>=44:
+            delete_listing(first_id)
+        done=0
         while True:
+            listing=get_listings(AUTH_TOKEN)
+            account_id=0
+            have_id=0
+            #to display all the listing 
+            # st.write(listing)
+
+            have_id,account_id=get_account_id(listing,have_id)
+            if software_name and platform and site_url and have_id!=1:
+                # st.write("I am running")
+                profile_id, status_code = create_listing(software_name, platform, site_url)
+                if status_code == 200 and profile_id:
+                    st.success(f"Listing created successfully for {software_name} on {platform}.")
+                    dashboard_url = f"https://app.reviewflowz.com/review_profiles/{profile_id}"
+                    st.write(f"Visit the dashboard: {dashboard_url}")
+                    new_listing=get_listings(AUTH_TOKEN)
+                    have_id,account_id=get_account_id(new_listing,have_id)
+
+                    st.write(f"Your id is {account_id}")
+                # elif have_id!=1:
+                #     st.error(f"Failed to create listing due to incorrect configurations . Status Code: {status_code}")
+            elif have_id!=0:
+                have_id=have_id
+            else:
+                st.error("Please fill out all fields.")
+            new_listing=get_listings(AUTH_TOKEN)
+            # st.write(new_listing)
+            have_id,account_id=get_account_id(new_listing,have_id)
+            # st.write(account_id)
+            
             review_data = fetch_review(platform, account_id)
             if "error" in review_data:
                 st.error(f"Failed to fetch the review: {review_data['error']}")
@@ -373,7 +392,7 @@ elif page=="Software Reviews":
                     sum1+=review['data'][i]['rating']
                 overall_rating=sum1/len(review['data'])
                 # st.write(review_data)
-                st.markdown(f"**<span style='font-size: 28px;'>Overall Rating : {overall_rating}</span>**",unsafe_allow_html=True)
+                st.markdown(f"**<span style='font-size: 28px;'>Overall Rating : {round(overall_rating,2)}</span>**",unsafe_allow_html=True)
                 st.markdown("__________________________")
                 for i in range(len(review['data'])):
                     st.markdown(f"**<span style='font-size: 24px;'>{review['data'][i]['title']}</span>**",unsafe_allow_html=True)
@@ -383,3 +402,5 @@ elif page=="Software Reviews":
                     st.markdown(f"**<span style='font-size: 18px;'>Cons :</span>** {review['data'][i]['cons']}",unsafe_allow_html=True)
                     st.markdown("__________________________")
                 break
+            
+
